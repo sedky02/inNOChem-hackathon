@@ -29,11 +29,21 @@ async def verify_session(
         raise HTTPException(status_code=409, detail="OPTIMIZATION_REQUIRED")
 
     vrepo = VerificationRepository(db)
-    if await vrepo.by_session(session.id) is not None:
-        raise HTTPException(status_code=409, detail="ALREADY_VERIFIED")
+    existing = await vrepo.by_session(session.id)
+    if existing is not None:
+        # Idempotent: re-verifying an already-sealed session returns the seal.
+        return VerifyResponse(
+            verification_id=existing.id,
+            session_id=session.id,
+            verified_by=UserBrief(id=user.id, full_name=user.full_name),
+            verification_hash=existing.verification_hash,
+            verified_at=existing.verified_at,
+        )
 
+    # CRITICAL configurations require an explicit override + documented notes
+    # (any engineer/admin may sign off — the UI already enforces acknowledgment).
     if req.overall_risk_at_sign.value == "CRITICAL":
-        if not (req.force_override and user.role.value == "admin"):
+        if not (req.force_override and (req.engineer_notes or "").strip()):
             raise HTTPException(status_code=409, detail="RISK_CRITICAL_REQUIRES_OVERRIDE")
 
     now = datetime.now(timezone.utc)

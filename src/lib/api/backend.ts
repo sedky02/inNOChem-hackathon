@@ -242,6 +242,39 @@ export async function fetchSessionsBackend(): Promise<SessionSummary[]> {
   }));
 }
 
+export interface VerifyResult {
+  verification_hash: string;
+  verified_at: string;
+}
+
+export async function verifyBackend(
+  sessionId: string,
+  body: {
+    acknowledged: boolean;
+    engineer_notes: string;
+    overall_risk_at_sign: string;
+    force_override: boolean;
+  },
+): Promise<VerifyResult> {
+  const { data } = await apiClient.post(
+    `/api/v1/sessions/${sessionId}/verify`,
+    body,
+  );
+  return { verification_hash: data.verification_hash, verified_at: data.verified_at };
+}
+
+/** Download a session export (json|pdf|csv) from the backend as a Blob. */
+export async function exportSessionBackend(
+  sessionId: string,
+  format: "json" | "pdf" | "csv",
+): Promise<Blob> {
+  const { data } = await apiClient.get(`/api/v1/sessions/${sessionId}/export`, {
+    params: { format },
+    responseType: "blob",
+  });
+  return data as Blob;
+}
+
 export async function fetchAggregateBackend(): Promise<DashboardAggregate> {
   const { data } = await apiClient.get("/api/v1/dashboard/aggregate");
   return {

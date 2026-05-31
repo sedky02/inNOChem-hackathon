@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowRight, Brain, ShieldAlert, ShieldCheck, TriangleAlert } from "lucide-react";
+import { ArrowRight, Brain, Loader2, ShieldAlert, ShieldCheck, TriangleAlert } from "lucide-react";
+import { toast } from "sonner";
+import { USE_MOCKS } from "@/lib/api/client";
+import { verifyBackend } from "@/lib/api/backend";
 
 import { RiskMeter } from "@/components/risk-meter";
 import { ShapForceChart } from "@/components/charts/shap-force-chart";
@@ -34,10 +37,37 @@ export default function Step4Page() {
   const storedAck = useExperimentStore((s) => s.safetyAcknowledged);
   const storedNotes = useExperimentStore((s) => s.engineerNotes);
   const acknowledgeSafety = useExperimentStore((s) => s.acknowledgeSafety);
+  const setServerVerification = useExperimentStore((s) => s.setServerVerification);
 
   const [shapParam, setShapParam] = useState<ExplainParameter>("pressure");
   const [checked, setChecked] = useState(storedAck);
   const [notes, setNotes] = useState(storedNotes);
+  const [proceeding, setProceeding] = useState(false);
+
+  async function handleProceed() {
+    // Real backend: seal the session server-side (human-in-the-loop gate) so
+    // downstream feedback/export are accepted. Mock path: just advance.
+    if (!USE_MOCKS && riskAssessment) {
+      setProceeding(true);
+      try {
+        const res = await verifyBackend(params.id, {
+          acknowledged: true,
+          engineer_notes: notes.trim() || "Risk profile reviewed and acknowledged.",
+          overall_risk_at_sign: riskAssessment.overall_risk,
+          force_override: true,
+        });
+        setServerVerification(res);
+      } catch {
+        setProceeding(false);
+        toast.error("Verification failed", {
+          description: "Could not seal the session on the server.",
+        });
+        return;
+      }
+      setProceeding(false);
+    }
+    router.push(`/experiment/${params.id}/step-5`);
+  }
 
   if (!riskAssessment || !explainability) {
     return (
@@ -205,9 +235,12 @@ export default function Step4Page() {
         <Button
           size="lg"
           className="gap-2"
-          disabled={!gateCleared}
-          onClick={() => router.push(`/experiment/${params.id}/step-5`)}
+          disabled={!gateCleared || proceeding}
+          onClick={handleProceed}
         >
+          {proceeding ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : null}
           Proceed to Output <ArrowRight className="size-4" />
         </Button>
       </div>

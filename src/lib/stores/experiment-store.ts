@@ -48,6 +48,8 @@ interface ExperimentState {
 
   // Step 5 — output
   feedbackSubmitted: boolean;
+  // Backend-issued seal (real-backend path); null on the mock path.
+  serverVerification: { verification_hash: string; verified_at: string } | null;
 
   // Actions
   initSession: (id: string, dyeName: string) => void;
@@ -60,6 +62,9 @@ interface ExperimentState {
   resetOverrides: () => void;
   confirmParameters: () => void;
   acknowledgeSafety: (ack: boolean, notes: string) => void;
+  setServerVerification: (
+    v: { verification_hash: string; verified_at: string } | null,
+  ) => void;
   setFeedbackSubmitted: (v: boolean) => void;
   goToStep: (n: number) => void;
   markStepComplete: (n: number) => void;
@@ -81,6 +86,7 @@ const initialState = {
   manualOverrides: {} as ProcessOverrides,
   simulationOutputs: null,
   parametersConfirmed: false,
+  serverVerification: null,
   riskAssessment: null,
   explainability: null,
   sustainabilityMetrics: null,
@@ -148,6 +154,8 @@ export const useExperimentStore = create<ExperimentState>()(
             ? addStep(s.completedSteps, 4)
             : s.completedSteps.filter((n) => n !== 4),
         })),
+
+      setServerVerification: (serverVerification) => set({ serverVerification }),
 
       setFeedbackSubmitted: (feedbackSubmitted) => set({ feedbackSubmitted }),
 

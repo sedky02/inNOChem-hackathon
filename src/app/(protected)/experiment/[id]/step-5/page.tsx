@@ -4,23 +4,17 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
-  BadgeCheck,
-  Droplets,
-  Leaf,
-  Recycle,
-  Zap,
+  BadgeCheck
 } from "lucide-react";
 
 import { AdaptiveFeedbackForm } from "@/components/adaptive-feedback-form";
 import { ExportToolbar } from "@/components/export-toolbar";
-import { SustainabilityMetricCard } from "@/components/sustainability-metric-card";
 import { ModeBadge } from "@/components/mode-badge";
 import { StepGuard } from "@/components/step-guard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NewExperimentButton } from "@/components/new-experiment-button";
 import { sealConfig, patchSession } from "@/lib/api";
-import { formatNumber } from "@/lib/domain";
 import { useExperimentStore } from "@/lib/stores/experiment-store";
 import type { ProcessParameters } from "@/lib/types";
 
@@ -37,6 +31,8 @@ export default function Step5Page() {
   const safetyAcknowledged = useExperimentStore((s) => s.safetyAcknowledged);
   const feedbackSubmitted = useExperimentStore((s) => s.feedbackSubmitted);
   const setFeedbackSubmitted = useExperimentStore((s) => s.setFeedbackSubmitted);
+  const serverVerification = useExperimentStore((s) => s.serverVerification);
+  const simulationOutputs = useExperimentStore((s) => s.simulationOutputs);
 
   const ready =
     selectedMode &&
@@ -48,18 +44,27 @@ export default function Step5Page() {
     ? { ...recommendedParameters, ...manualOverrides }
     : null;
 
-  // Seal the manifest once on mount (stable hash/timestamp).
-  const [manifest] = useState(() =>
-    ready && effective && selectedMode
-      ? sealConfig({
-          session_id: sessionId ?? params.id,
-          dye_name: dyeName || params.id,
-          mode: selectedMode,
-          parameters: effective,
-          engineer_ack: safetyAcknowledged,
-        })
-      : null,
-  );
+  // Seal the manifest once on mount (stable hash/timestamp). When the real
+  // backend sealed the session (Step 4 verify), use its authoritative hash;
+  // otherwise fall back to the client-side seal (mock path).
+  const [manifest] = useState(() => {
+    if (!(ready && effective && selectedMode)) return null;
+    const base = sealConfig({
+      session_id: sessionId ?? params.id,
+      dye_name: dyeName || params.id,
+      mode: selectedMode,
+      parameters: effective,
+      engineer_ack: safetyAcknowledged,
+    });
+    return serverVerification
+      ? {
+          ...base,
+          verification_hash: serverVerification.verification_hash,
+          timestamp: serverVerification.verified_at,
+          signature: "gdt::server-sealed",
+        }
+      : base;
+  });
 
   // Mark the session complete in the (mock) backend.
   const marked = useRef(false);
@@ -160,38 +165,39 @@ export default function Step5Page() {
       </Card>
 
       {/* Sustainability impact */}
-      <div>
-        <h2 className="mb-3 font-display text-base font-semibold">
-          Sustainability Impact
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <SustainabilityMetricCard
-            icon={Droplets}
-            label="Water saved"
-            value={`${formatNumber(sustainability.water_savings, 1)}%`}
-            accentClass="bg-brand-cyan/15 text-brand-cyan"
-          />
-          <SustainabilityMetricCard
-            icon={Zap}
-            label="Energy reduction"
-            value={`${formatNumber(sustainability.energy_reduction, 1)}%`}
-            accentClass="bg-warning/15 text-warning"
-          />
-          <SustainabilityMetricCard
-            icon={Leaf}
-            label="Carbon saved"
-            value={`${formatNumber(sustainability.carbon_saved, 2)} kg`}
-            accentClass="bg-primary/15 text-primary"
-          />
-          <SustainabilityMetricCard
-            icon={Recycle}
-            label="E-Factor"
-            value={`${formatNumber(sustainability.e_factor, 3)}`}
-            accentClass="bg-success/15 text-success"
-          />
+      {/*
+        <div>
+          <h2 className="mb-3 font-display text-base font-semibold">
+            Sustainability Impact
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <SustainabilityMetricCard
+              icon={Droplets}
+              label="Water saved"
+              value={`${formatNumber(sustainability.water_savings, 1)}%`}
+              accentClass="bg-brand-cyan/15 text-brand-cyan"
+            />
+            <SustainabilityMetricCard
+              icon={Zap}
+              label="Energy reduction"
+              value={`${formatNumber(sustainability.energy_reduction, 1)}%`}
+              accentClass="bg-warning/15 text-warning"
+            />
+            <SustainabilityMetricCard
+              icon={Leaf}
+              label="Carbon saved"
+              value={`${formatNumber(sustainability.carbon_saved, 2)} kg`}
+              accentClass="bg-primary/15 text-primary"
+            />
+            <SustainabilityMetricCard
+              icon={Recycle}
+              label="E-Factor"
+              value={`${formatNumber(sustainability.e_factor, 3)}`}
+              accentClass="bg-success/15 text-success"
+            />
+          </div>
         </div>
-      </div>
-
+      */}
       {/* Export */}
       <Card className="print:hidden">
         <CardContent className="py-4">
@@ -199,6 +205,7 @@ export default function Step5Page() {
             baseName={manifest.session_id}
             payload={exportPayload}
             csvRow={csvRow}
+            sessionId={params.id}
           />
         </CardContent>
       </Card>
@@ -206,10 +213,10 @@ export default function Step5Page() {
       {/* Adaptive feedback */}
       <div className="print:hidden">
       <AdaptiveFeedbackForm
-        sessionId={manifest.session_id}
+        sessionId={params.id}
         submitted={feedbackSubmitted}
         suggested={{
-          actual_ks: sustainability ? effective.pressure / 14 : 0,
+          actual_ks: simulationOutputs?.color_intensity ?? effective.pressure / 14,
           actual_pressure: effective.pressure,
           actual_temperature: effective.temperature,
           actual_flow_rate: effective.flow_rate,
