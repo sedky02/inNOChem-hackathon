@@ -1,0 +1,41 @@
+# ── Core (required to run) ────────────────────────────────────
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7
+pydantic-settings>=2.3
+sqlalchemy[asyncio]>=2.0
+aiosqlite>=0.20            # default local driver (SQLite)
+python-jose[cryptography]>=3.3
+bcrypt>=4.1
+python-multipart>=0.0.9
+email-validator>=2.1
+
+# ── Postgres (production DB) ───────────────────────────────────
+asyncpg>=0.29
+
+# ── Scientific / ML engines (optional — engines fall back to
+#    deterministic models when these are absent) ────────────────
+numpy>=1.26
+scipy>=1.13
+pandas>=2.2
+rdkit>=2024.3.1           # pip package is `rdkit` (formerly rdkit-pypi)
+xgboost>=2.0
+scikit-learn>=1.5
+shap>=0.45
+
+# ── Async / infra (optional — in-memory + inline fallbacks) ────
+redis>=5.0
+celery>=5.4
+boto3>=1.34
+reportlab>=4.2
+
+# ── Observability / security (optional) ───────────────────────
+structlog>=24.1
+sentry-sdk[fastapi]>=2.5
+slowapi>=0.1.9
+prometheus-client>=0.20
+
+# ── Dev / test ─────────────────────────────────────────────────
+pytest>=8.2
+pytest-asyncio>=0.23
+httpx>=0.27

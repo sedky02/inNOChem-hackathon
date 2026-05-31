@@ -1,0 +1,45 @@
+services:
+  api:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/greendye
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      JWT_SECRET: change-me-in-production
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3137
+      SEED_ON_STARTUP: "true"
+    depends_on: [db, redis]
+
+  celery-worker:
+    build: .
+    command: celery -A src.jobs.celery_app.celery_app worker --concurrency=4 --loglevel=info
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/greendye
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    depends_on: [db, redis]
+
+  celery-beat:
+    build: .
+    command: celery -A src.jobs.celery_app.celery_app beat --loglevel=info
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    depends_on: [redis]
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: greendye
+      POSTGRES_PASSWORD: postgres
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    ports: ["5432:5432"]
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
+volumes:
+  pgdata:
