@@ -33,6 +33,7 @@ export default function Step2Page() {
         fabric_profile: fabricProfile!,
         chemical_profile: screeningResult!,
         optimization_mode: mode,
+        session_id: params.id,
       };
       return optimizeProcess(req);
     },

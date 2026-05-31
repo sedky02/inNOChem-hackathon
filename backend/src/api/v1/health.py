@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config.database import get_db
 from src.core.cache import USING_REDIS, cache
 from src.engines.pipeline import pipeline
+from src.ml.registry import registry
 
 router = APIRouter(tags=["health"])
 
@@ -28,5 +29,10 @@ async def health(db: AsyncSession = Depends(get_db)) -> dict:
         "status": "ok" if db_ok and cache_ok else "degraded",
         "db": "ok" if db_ok else "error",
         "cache": ("redis" if USING_REDIS else "memory") if cache_ok else "error",
-        "model": pipeline.optimizer.model_version,
+        "param_model": pipeline.optimizer.model_version,
+        "ml_models": {
+            "ks_regressor": registry.ks_model is not None,
+            "thermal_classifier": registry.thermal_model is not None,
+            "fixation_classifier": registry.fixation_model is not None,
+        },
     }

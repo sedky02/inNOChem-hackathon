@@ -62,6 +62,18 @@ class ExplainabilityEngine:
             (mol.compatibility_score - 60.0) / 80.0,
         ]
 
+        # Weight contributions by the trained K/S model's feature importances
+        # (data-informed attributions) when the model is available.
+        from src.ml.registry import registry
+
+        importances = registry.ks_feature_importances()
+        if importances:
+            mapped = ["MolWt", "LogP", "TPSA", "co2_density", "polyester_pct", None]
+            raw_base = [
+                w * (1.0 + 4.0 * importances.get(key, 0.0)) if key else w
+                for w, key in zip(raw_base, mapped)
+            ]
+
         for attr, out_key in PARAM_KEYS.items():
             predicted = round(getattr(params, attr), 2)
 

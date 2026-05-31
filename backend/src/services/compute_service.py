@@ -16,7 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.cache import cache
 from src.core.executor import run_cpu_bound
-from src.engines import ChemicalEngine, InvalidSMILESError, pipeline
+from src.engines.chemical_engine import ChemicalEngine
+from src.engines.errors import InvalidSMILESError
+from src.engines.pipeline import pipeline
 from src.models.tables import OptimizationResult, ScreeningResult, Session
 from src.repositories.result_repo import (
     OptimizationRepository,
@@ -103,12 +105,17 @@ async def screen_chemical(
     session.chemical_input = {**descriptors, "compatibility_score": compat, "solubility_score": solub}
     await db.flush()
 
+    from src.rag.retriever import retrieve_citations
+
+    citations = retrieve_citations(f"{dye_name} supercritical CO2 dyeing", k=3)
+
     return ScreenResponse(
         compatibility_score=compat,
         solubility_score=solub,
         descriptors=descriptors,
         compute_time_ms=round(compute_ms, 1),
         session_id=session.id,
+        rag_citations=citations,
     )
 
 
@@ -119,6 +126,13 @@ def _canonical(request: OptimizeRequest) -> str:
 async def optimize_process(
     db: AsyncSession, session: Session, request: OptimizeRequest
 ) -> OptimizeResponse:
+    # Inject the original SMILES from the session's screening result so the
+    # risk firewall can run structural (SMARTS) alerts during optimization.
+    if request.smiles is None:
+        screening = await ScreeningRepository(db).by_session(session.id)
+        if screening is not None:
+            request = request.model_copy(update={"smiles": screening.smiles_string})
+
     cache_key = f"optimize:{_sha(_canonical(request))}"
     cached = await cache.get(cache_key)
     if cached:

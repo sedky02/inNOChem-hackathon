@@ -138,6 +138,8 @@ export interface OptimizeRequest {
   chemical_profile: ScreeningResult;
   optimization_mode: OptimizationMode;
   manual_overrides?: ProcessOverrides;
+  /** Set when talking to the real backend (ignored by the mock layer). */
+  session_id?: string;
 }
 
 export interface OptimizeResponse {

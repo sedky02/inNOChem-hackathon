@@ -44,6 +44,9 @@ class OptimizeRequest(BaseModel):
     chemical_profile: ChemicalProfile
     optimization_mode: OptimizationMode
     manual_overrides: ManualOverrides | None = None
+    # Optional original SMILES — injected server-side from the session's
+    # screening result so the risk firewall can run structural alerts.
+    smiles: str | None = None
 
 
 # ── Internal normalized parameter bundle used by the engines ───

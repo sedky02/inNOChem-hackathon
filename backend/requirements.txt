@@ -18,6 +18,7 @@ asyncpg>=0.29
 numpy>=1.26
 scipy>=1.13
 pandas>=2.2
+openpyxl>=3.1            # read the .xlsx training dataset
 rdkit>=2024.3.1           # pip package is `rdkit` (formerly rdkit-pypi)
 xgboost>=2.0
 scikit-learn>=1.5

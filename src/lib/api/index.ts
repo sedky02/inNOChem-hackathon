@@ -1,4 +1,12 @@
-import { apiClient, mockLatency, USE_MOCKS } from "@/lib/api/client";
+import { mockLatency, USE_MOCKS } from "@/lib/api/client";
+import {
+  adaptBackend,
+  createSessionBackend,
+  fetchAggregateBackend,
+  fetchSessionsBackend,
+  optimizeBackend,
+  screenBackend,
+} from "@/lib/api/backend";
 import {
   mockAdapt,
   mockOptimize,
@@ -30,16 +38,14 @@ import type {
 
 export async function screenChemical(
   req: ScreenRequest,
+  sessionId?: string,
 ): Promise<ScreeningResult> {
   if (USE_MOCKS) {
     await mockLatency(600, 1200);
     return mockScreen(req);
   }
-  const { data } = await apiClient.post<ScreeningResult>(
-    "/api/v1/chemical/screen",
-    req,
-  );
-  return data;
+  if (!sessionId) throw new Error("session id required for screening");
+  return screenBackend(req, sessionId);
 }
 
 // ── process optimization ─────────────────────────────────────
@@ -51,11 +57,7 @@ export async function optimizeProcess(
     await mockLatency(400, 900);
     return mockOptimize(req);
   }
-  const { data } = await apiClient.post<OptimizeResponse>(
-    "/api/v1/process/optimize",
-    req,
-  );
-  return data;
+  return optimizeBackend(req);
 }
 
 // ── adaptive feedback ────────────────────────────────────────
@@ -65,11 +67,7 @@ export async function adaptModel(req: AdaptRequest): Promise<AdaptResponse> {
     await mockLatency(700, 1400);
     return mockAdapt(req);
   }
-  const { data } = await apiClient.post<AdaptResponse>(
-    "/api/v1/model/adapt",
-    req,
-  );
-  return data;
+  return adaptBackend(req);
 }
 
 // ── sessions & dashboard ─────────────────────────────────────
@@ -79,8 +77,7 @@ export async function fetchSessions(): Promise<SessionSummary[]> {
     await mockLatency(250, 500);
     return listSessions();
   }
-  const { data } = await apiClient.get<SessionSummary[]>("/api/sessions");
-  return data;
+  return fetchSessionsBackend();
 }
 
 export async function fetchSession(id: string): Promise<SessionSummary> {
@@ -90,8 +87,10 @@ export async function fetchSession(id: string): Promise<SessionSummary> {
     if (!s) throw new Error(`Session ${id} not found`);
     return s;
   }
-  const { data } = await apiClient.get<SessionSummary>(`/api/sessions/${id}`);
-  return data;
+  const list = await fetchSessionsBackend();
+  const found = list.find((s) => s.id === id);
+  if (!found) throw new Error(`Session ${id} not found`);
+  return found;
 }
 
 export async function createNewSession(
@@ -102,11 +101,7 @@ export async function createNewSession(
     await mockLatency(150, 300);
     return createSession(id, dyeName);
   }
-  const { data } = await apiClient.post<SessionSummary>("/api/sessions", {
-    id,
-    dye_name: dyeName,
-  });
-  return data;
+  return createSessionBackend(dyeName ?? "");
 }
 
 export async function patchSession(
@@ -117,11 +112,9 @@ export async function patchSession(
     await mockLatency(100, 250);
     return updateSession(id, patch);
   }
-  const { data } = await apiClient.put<SessionSummary>(
-    `/api/sessions/${id}`,
-    patch,
-  );
-  return data;
+  // The real backend persists screening/optimization/verification through their
+  // dedicated endpoints, so the frontend's summary-level patch is a no-op here.
+  return undefined;
 }
 
 export async function fetchDashboardAggregate(): Promise<DashboardAggregate> {
@@ -129,10 +122,7 @@ export async function fetchDashboardAggregate(): Promise<DashboardAggregate> {
     await mockLatency(250, 500);
     return dashboardAggregate();
   }
-  const { data } = await apiClient.get<DashboardAggregate>(
-    "/api/dashboard/aggregate",
-  );
-  return data;
+  return fetchAggregateBackend();
 }
 
 // ── config manifest (Step 5) ─────────────────────────────────

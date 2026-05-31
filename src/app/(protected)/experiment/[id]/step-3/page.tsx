@@ -51,6 +51,7 @@ export default function Step3Page() {
         chemical_profile: screeningResult!,
         optimization_mode: selectedMode!,
         manual_overrides: overrides,
+        session_id: params.id,
       }),
     onSuccess: (res) => applyOptimizeResult(res),
   });

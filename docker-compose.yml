@@ -1,0 +1,71 @@
+# GreenDye Twin — unified stack: FastAPI backend + Next.js frontend + Redis.
+# Postgres is optional (enable with: docker compose --profile postgres up).
+#
+#   docker compose up --build
+#     backend  → http://localhost:8000  (docs at /docs)
+#     frontend → http://localhost:3000
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      # SQLite by default (zero-setup). For Postgres, enable the `postgres`
+      # profile and switch to:
+      #   postgresql+asyncpg://greendye:greendye@db:5432/greendye
+      DATABASE_URL: ${DATABASE_URL:-sqlite+aiosqlite:////app/dbdata/greendye.db}
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3137
+      MODEL_BASE_PATH: ./models/
+      SEED_ON_STARTUP: "true"
+    volumes:
+      - ./backend/models:/app/models       # persist trained models
+      - greendye_db:/app/dbdata             # persist sqlite (see DATABASE_URL)
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_USE_MOCKS: "false"
+    depends_on:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # Optional Postgres (production DB). Enable with --profile postgres and set
+  # DATABASE_URL=postgresql+asyncpg://greendye:greendye@db:5432/greendye
+  db:
+    image: postgres:16-alpine
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_USER: greendye
+      POSTGRES_PASSWORD: greendye
+      POSTGRES_DB: greendye
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  redis_data:
+  pgdata:
+  greendye_db:

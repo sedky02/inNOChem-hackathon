@@ -22,11 +22,12 @@ export function NewExperimentButton({
 
   async function start() {
     setLoading(true);
-    const id = newSessionId("EXPR");
     try {
-      await createNewSession(id);
-      initSession(id, "");
-      router.push(`/experiment/${id}/step-1`);
+      // The backend assigns the canonical session id; the mock layer echoes
+      // the client-generated one. Route using whatever id comes back.
+      const summary = await createNewSession(newSessionId("EXPR"));
+      initSession(summary.id, "");
+      router.push(`/experiment/${summary.id}/step-1`);
     } finally {
       setLoading(false);
     }

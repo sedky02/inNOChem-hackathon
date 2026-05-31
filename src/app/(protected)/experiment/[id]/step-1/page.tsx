@@ -100,7 +100,8 @@ export default function Step1Page() {
     molecularScreeningSchema.shape.smiles.safeParse(smiles).success;
 
   const mutation = useMutation({
-    mutationFn: screenChemical,
+    mutationFn: (vars: { dye_name: string; smiles: string }) =>
+      screenChemical(vars, params.id),
     onSuccess: (data, vars) => {
       setScreeningResult(data, vars.dye_name);
       void patchSession(params.id, {

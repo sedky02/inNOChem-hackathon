@@ -12,5 +12,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /install /usr/local
 COPY . .
+RUN mkdir -p /app/dbdata /app/models
+# Train the RandomForest models at build time if not already present, so the
+# image ships ready-to-serve. Safe to fail (engines fall back gracefully).
+RUN python -m scripts.train_models || echo "training skipped"
 EXPOSE 8000
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

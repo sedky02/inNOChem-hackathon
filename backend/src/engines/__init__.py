@@ -1,16 +1,7 @@
-from src.engines.chemical_engine import ChemicalEngine
-from src.engines.errors import (
-    EngineError,
-    InvalidSMILESError,
-    ModelUnavailableError,
-)
-from src.engines.pipeline import EnginePipeline, pipeline
+"""Engine package.
 
-__all__ = [
-    "ChemicalEngine",
-    "EnginePipeline",
-    "pipeline",
-    "EngineError",
-    "InvalidSMILESError",
-    "ModelUnavailableError",
-]
+Intentionally free of eager submodule imports: several engines depend on
+`src.ml.features`, which imports `src.engines.pr_eos`. Importing heavy modules
+(pipeline, chemical_engine) here would create a circular import. Import the
+engine modules directly, e.g. `from src.engines.pipeline import pipeline`.
+"""

@@ -12,9 +12,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuthStore } from "@/lib/stores/auth-store";
+import { USE_MOCKS } from "@/lib/api/client";
+import { loginBackend } from "@/lib/api/backend";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,15 +26,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState("demo");
   const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email) return;
     setLoading(true);
-    // Mock auth — resolves instantly, but mimics a network round-trip.
-    setTimeout(() => {
+    try {
+      // Real backend: obtain + store a JWT. Mock: resolve locally.
+      if (!USE_MOCKS) await loginBackend(email, password);
       login(email);
       router.replace("/dashboard");
-    }, 500);
+    } catch {
+      toast.error("Sign in failed", { description: "Check your credentials." });
+      setLoading(false);
+    }
   }
 
   return (

@@ -31,3 +31,5 @@ class ScreenResponse(BaseModel):
     descriptors: Descriptors
     compute_time_ms: float
     session_id: UUID | None = None
+    # Populated from the RAG literature store when available (else empty).
+    rag_citations: list[str] = []

@@ -43,7 +43,9 @@ class EnginePipeline:
         # 2-5) Downstream engines.
         simulation = self.simulator.simulate(params, mol, fabric)
         sustainability = self.sustainability.calculate(params, fabric.mass_kg)
-        risk = self.risk.assess(params, mol, simulation.dye_uptake_pct)
+        risk = self.risk.assess(
+            params, mol, simulation.dye_uptake_pct, fabric, request.smiles
+        )
         explainability = self.explainer.explain(params, mol, fabric)
 
         compute_ms = (time.perf_counter() - start) * 1000.0

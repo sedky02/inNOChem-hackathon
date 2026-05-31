@@ -24,8 +24,8 @@ async def main() -> None:
         r = await c.get("/health")
         print("health:", r.status_code, r.json())
 
-        # login as engineer (can verify)
-        r = await c.post(f"{BASE}/auth/login", json={"email": "engineer@greendye.io", "password": "demo"})
+        # login as admin (can verify + force-override CRITICAL risk)
+        r = await c.post(f"{BASE}/auth/login", json={"email": "admin@greendye.io", "password": "demo"})
         assert r.status_code == 200, r.text
         token = r.json()["access_token"]
         h = {"Authorization": f"Bearer {token}"}
@@ -62,7 +62,7 @@ async def main() -> None:
         # verify
         r = await c.post(
             f"{BASE}/sessions/{sid}/verify",
-            json={"acknowledged": True, "engineer_notes": "ok", "overall_risk_at_sign": opt["risk_assessment"]["overall_risk"]},
+            json={"acknowledged": True, "engineer_notes": "ok", "overall_risk_at_sign": opt["risk_assessment"]["overall_risk"], "force_override": True},
             headers=h,
         )
         assert r.status_code == 200, r.text
