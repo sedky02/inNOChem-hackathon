@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useForm, Controller } from "react-hook-form";
+import * as ReactHookForm from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -56,6 +56,25 @@ const EXAMPLES: { name: string; smiles: string }[] = [
   { name: "Disperse Blue (azo)", smiles: "c1ccc(/N=N/c2ccc(N(CC)CC)cc2)cc1" },
   { name: "Anthraquinone core", smiles: "O=C1c2ccccc2C(=O)c2ccccc21" },
 ];
+
+const { Controller, useForm } = ReactHookForm as unknown as {
+  Controller: React.ComponentType<{
+    control: unknown;
+    name: string;
+    render: (props: { field: { value: FabricType } }) => React.ReactNode;
+  }>;
+  useForm: <TInput>(props: unknown) => {
+    control: unknown;
+    register: (name: keyof TInput, options?: unknown) => Record<string, unknown>;
+    handleSubmit: (handler: (values: TInput) => void) => (event?: React.BaseSyntheticEvent) => void;
+    watch: <TName extends keyof TInput>(name: TName) => TInput[TName];
+    setValue: (name: keyof TInput, value: TInput[keyof TInput], options?: unknown) => void;
+    formState: {
+      errors: Partial<Record<keyof TInput, { message?: string }>>;
+      isValid: boolean;
+    };
+  };
+};
 
 export default function Step1Page() {
   const router = useRouter();

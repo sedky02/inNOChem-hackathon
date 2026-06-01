@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import * as ReactHookForm from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2, Send } from "lucide-react";
@@ -20,6 +20,16 @@ import {
 import { feedbackSchema, type FeedbackInput } from "@/lib/schemas";
 import { adaptModel } from "@/lib/api";
 import type { AdaptResponse } from "@/lib/types";
+
+const { useForm } = ReactHookForm as unknown as {
+  useForm: <TInput>(props: unknown) => {
+    register: (name: keyof TInput, options?: unknown) => Record<string, unknown>;
+    handleSubmit: (handler: (values: TInput) => void) => (event?: React.BaseSyntheticEvent) => void;
+    formState: {
+      errors: Partial<Record<keyof TInput, { message?: string }>>;
+    };
+  };
+};
 
 export function AdaptiveFeedbackForm({
   sessionId,

@@ -4,24 +4,23 @@ FastAPI backend for the GreenDye Twin digital twin: RDKit chemistry, a
 multi-objective optimization pipeline, SHAP-style explainability, sustainability
 LCA, risk scoring, JWT auth, and an adaptive feedback loop.
 
-## Design choices for zero-setup runs
+## Runtime modes
 
-The full spec targets PostgreSQL + Redis + Celery + S3 + RDKit/XGBoost/SHAP.
-To stay runnable in any environment, this implementation **degrades gracefully**:
+The production deployment targets PostgreSQL + Redis + Celery + optional S3.
+Local development can still run with fewer services:
 
 | Concern | Production | Default (no infra) |
 |---|---|---|
-| Database | PostgreSQL (`asyncpg`) | **SQLite** (`aiosqlite`) — auto-created |
+| Database | PostgreSQL (`asyncpg`) | **SQLite** (`aiosqlite`) |
 | Cache / tokens | Redis | **In-memory** TTL store |
-| Background jobs | Celery + Redis | **Inline** confidence updates |
+| Background jobs | Dedicated Celery worker + Redis | API-only mode for flows that do not enqueue jobs |
 | Chemistry | RDKit descriptors | **Deterministic** SMILES approximation |
 | ML optimization | XGBoost models | **Thermodynamic baseline** + mode weights |
 | Explainability | `shap.TreeExplainer` | **Deterministic** additive attributions |
 | Exports | S3 presigned URLs | **Direct file streaming** |
 
-Every heavy dependency is import-guarded, so `pip install` of just the core
-packages is enough to boot. Installing the optional packages (see
-`requirements.txt`) transparently upgrades each engine to its real implementation.
+The Docker image does not train models during build. Train or load model
+artifacts as a separate release step and point `MODEL_BASE_PATH` at them.
 
 ## Run locally (SQLite, no infra)
 
@@ -34,18 +33,32 @@ pip install fastapi "uvicorn[standard]" pydantic pydantic-settings \
 uvicorn src.main:app --reload --port 8000
 ```
 
-Open <http://localhost:8000/docs>. The app auto-creates tables and seeds a demo
-org on startup.
+Open <http://localhost:8000/docs>. The app auto-creates tables locally. To seed
+demo users, set `SEED_ON_STARTUP=true` or run `python -m scripts.seed_dev_data`.
 
 **Demo logins** (password `demo`): `admin@greendye.io`, `engineer@greendye.io`,
 `operator@greendye.io`.
 
-## Run with full stack
+## Run full local stack
 
 ```bash
-cp .env.example .env        # adjust as needed
-docker compose up --build   # api + postgres + redis + celery
+cp .env.example .env
+docker compose up --build
 ```
+
+`docker-compose.yml` is for local development only. Production is described by
+`render.yaml`, which creates a Render web service for the API, a separate
+background worker for Celery, Render Postgres, and Render Key Value.
+
+## Render deployment
+
+Use `render.yaml` from the repository root. Set `CORS_ORIGINS` in the Render
+Dashboard to the comma-separated list of allowed browser origins, or leave it
+empty for server-to-server/API-docs-only access.
+
+The API and Celery worker share the same Docker image but use different
+commands. The API runs Uvicorn on Render's `PORT`; the worker runs
+`celery -A src.jobs.celery_app.celery_app worker`.
 
 ## Tests
 
@@ -67,14 +80,6 @@ Interactive OpenAPI docs at `/docs`. Base path: `/api/v1`. Key endpoints:
 - `GET /api/v1/dashboard/aggregate`
 - `GET/POST/PATCH/DELETE /api/v1/admin/users` · `GET/POST /api/v1/admin/model-versions`
 - `GET /health`
-
-## Connecting the frontend
-
-The backend's response field names follow this spec (e.g. `pressure_bar`,
-`dye_uptake_pct`). The Next.js frontend currently runs on its own mock layer; a
-thin adapter in the frontend's `lib/api` (or matching the field names) bridges
-the two. Point the frontend at the backend by setting
-`NEXT_PUBLIC_API_URL=http://localhost:8000` and `NEXT_PUBLIC_USE_MOCKS=false`.
 
 ## Layering
 

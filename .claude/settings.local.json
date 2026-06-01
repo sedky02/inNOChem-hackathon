@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx --yes shadcn@latest init -d -b radix --force --yes)",
+      "Bash(npx tsc *)",
+      "Bash(python3 -m venv .venv)",
+      "Bash(.venv/bin/pip install *)"
+    ]
+  }
+}

@@ -16,7 +16,8 @@ from src.engines.errors import InvalidSMILESError
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
+    if settings.auto_create_tables:
+        await init_db()
     if settings.seed_on_startup:
         from src.config.seed import seed_demo_data
 
@@ -43,9 +44,9 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
-        # Allow any localhost/127.0.0.1 port in dev so the Next.js dev server
-        # works regardless of which port it lands on (avoids CORS "Network Error").
-        allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+        allow_origin_regex=(
+            r"https?://(localhost|127\.0\.0\.1)(:\d+)?" if settings.is_development else None
+        ),
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=["Authorization", "Content-Type"],

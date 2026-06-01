@@ -13,10 +13,13 @@ _backend = settings.celery_result_backend or settings.redis_url or "cache+memory
 
 celery_app = Celery("greendye", broker=_broker, backend=_backend)
 celery_app.conf.update(
+    imports=("src.jobs.tasks",),
     task_serializer="json",
     result_serializer="json",
     accept_content=["json"],
     task_track_started=True,
+    task_always_eager=settings.celery_task_always_eager,
+    broker_connection_retry_on_startup=True,
     beat_schedule={
         "check-retrain-threshold": {
             "task": "jobs.check_retrain_threshold",

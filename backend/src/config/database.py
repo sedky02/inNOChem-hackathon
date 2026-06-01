@@ -21,7 +21,7 @@ class Base(DeclarativeBase):
 
 
 engine = create_async_engine(
-    settings.database_url,
+    settings.sqlalchemy_database_url,
     echo=False,
     future=True,
     # SQLite needs this for use across the asyncio thread pool.

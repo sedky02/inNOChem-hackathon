@@ -1,0 +1,90 @@
+services:
+  - type: web
+    name: greendye-api
+    runtime: docker
+    plan: starter
+    healthCheckPath: /health
+    dockerCommand: sh -c "uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WEB_CONCURRENCY:-1}"
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: WEB_CONCURRENCY
+        value: "1"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: greendye-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: greendye-redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: keyvalue
+          name: greendye-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: keyvalue
+          name: greendye-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: AUTO_CREATE_TABLES
+        value: "true"
+      - key: SEED_ON_STARTUP
+        value: "false"
+
+  - type: worker
+    name: greendye-worker
+    runtime: docker
+    plan: starter
+    dockerCommand: celery -A src.jobs.celery_app.celery_app worker --concurrency=2 --loglevel=info
+    maxShutdownDelaySeconds: 120
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: greendye-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: greendye-redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: keyvalue
+          name: greendye-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: keyvalue
+          name: greendye-redis
+          property: connectionString
+      - key: JWT_SECRET
+        fromService:
+          type: web
+          name: greendye-api
+          envVarKey: JWT_SECRET
+      - key: AUTO_CREATE_TABLES
+        value: "false"
+      - key: SEED_ON_STARTUP
+        value: "false"
+
+  - type: keyvalue
+    name: greendye-redis
+    plan: starter
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
+
+databases:
+  - name: greendye-db
+    databaseName: greendye
+    user: greendye
+    plan: basic-256mb
+    ipAllowList: []
